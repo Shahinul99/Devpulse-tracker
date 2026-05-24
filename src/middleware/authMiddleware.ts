@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import type { Request, Response, NextFunction } from "express";
+import * as jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key";
 
@@ -15,10 +15,11 @@ export interface AuthenticatedRequest extends Request {
 export const authenticateJWT = (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): void => {
   const authHeader = req.headers.authorization;
 
+  // 1. Check if header exists
   if (!authHeader) {
     res.status(401).json({
       success: false,
@@ -28,19 +29,27 @@ export const authenticateJWT = (
     return;
   }
 
-  // Handle standard "Authorization: <token>" or "Authorization: Bearer <token>"
+// 2. Extract token safely
   const token = authHeader.startsWith("Bearer ")
     ? authHeader.split(" ")[1]
     : authHeader;
 
+  // Catch any edge case where token is missing or undefined before verification
+  if (!token) {
+    res.status(401).json({
+      success: false,
+      message: "Access Denied",
+      errors: "Malformed authentication token sequence.",
+    });
+    return;
+  }
+
+  // 3. Verify token
   try {
-    const decoded = jwt.verify(
-      token,
-      JWT_SECRET,
-    ) as AuthenticatedRequest["user"];
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
     req.user = decoded;
     next();
-  } catch (error: any) {
+ } catch (error: any) {
     res.status(401).json({
       success: false,
       message: "Access Denied",
@@ -49,16 +58,12 @@ export const authenticateJWT = (
   }
 };
 
-export const requireRole = (role: "maintainer") => {
-  return (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): void => {
+export const requireRole = (role: "contributor" | "maintainer") => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user || req.user.role !== role) {
       res.status(403).json({
         success: false,
-        message: "Forbidden Operation",
+        message: "Forbidden",
         errors: `Privileged action restricted to users holding the "${role}" role permission context.`,
       });
       return;

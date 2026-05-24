@@ -1,6 +1,6 @@
-import { Response } from 'express';
+import { type Response } from 'express';
 import { pool } from '../config/db.js';
-import { AuthenticatedRequest } from '../middleware/authMiddleware.js';
+import { type AuthenticatedRequest } from '../middleware/authMiddleware.js';
 
 // 1. Create Issue
 export const createIssue = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
